@@ -1,0 +1,26 @@
+[app]
+
+# Normal training profile for local/docker runs.
+# The previous tiny values were only suitable for smoke tests.
+algorithm_on_policy_or_off_policy = "off-policy"
+
+replay_buffer_capacity = 4096
+preload_ratio = 0.25
+
+reverb_remover = "reverb.selectors.Fifo"
+reverb_sampler = "reverb.selectors.Uniform"
+reverb_rate_limiter = "MinSize"
+reverb_samples_per_insert = 5
+reverb_error_buffer = 5
+
+train_batch_size = 256
+dump_model_freq = 1
+
+# Sync freshly trained checkpoints to actors once per minute.
+model_file_sync_per_minutes = 1
+modelpool_max_save_model_count = 1
+
+# Optional warm start settings.
+preload_model = false
+preload_model_dir = "{agent_name}/ckpt"
+preload_model_id = 1000
