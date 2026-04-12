@@ -85,6 +85,22 @@ class EpisodeRunner:
         self.default_monster_speedup = int(self._get_conf_value(env_conf, "monster_speedup", 500))
         self.default_monster_speed = float(self._get_conf_value(env_conf, "monster_speed", 1.0))
         self.has_monster_speed = self._has_conf_key(env_conf, "monster_speed")
+        self.last_model_sync_episode = 0
+
+    def _maybe_sync_model(self, episode_index):
+        if self.last_model_sync_episode <= 0:
+            self.agent.load_model(id="latest")
+            self.last_model_sync_episode = episode_index
+            return
+
+        if episode_index - self.last_model_sync_episode >= max(1, Config.MODEL_SYNC_INTERVAL_EPISODES):
+            self.agent.load_model(id="latest")
+            self.last_model_sync_episode = episode_index
+
+    def _flush_rollout(self, collector, bootstrap_value=None):
+        if not collector:
+            return None
+        return sample_process(collector, bootstrap_value=bootstrap_value)
 
     def run_episodes(self):
         while True:
@@ -106,11 +122,12 @@ class EpisodeRunner:
             self.agent.reset(env_obs)
             if hasattr(self.agent, "set_curriculum"):
                 self.agent.set_curriculum(curriculum_info)
-            self.agent.load_model(id="latest")
+            self._maybe_sync_model(next_episode)
 
             obs_data, _ = self.agent.observation_process(env_obs)
 
             collector = []
+            pending_act_data = None
             self.episode_cnt = next_episode
             done = False
             step = 0
@@ -176,7 +193,11 @@ class EpisodeRunner:
             )
 
             while not done:
-                act_data = self.agent.predict(list_obs_data=[obs_data])[0]
+                if pending_act_data is None:
+                    act_data = self.agent.predict(list_obs_data=[obs_data])[0]
+                else:
+                    act_data = pending_act_data
+                    pending_act_data = None
                 act = self.agent.action_process(act_data)
 
                 _, env_obs = self.env.step(act)
@@ -330,6 +351,18 @@ class EpisodeRunner:
                     )
                     collector.append(frame)
 
+                    should_flush = (
+                        not done
+                        and Config.ROLLOUT_FLUSH_STEPS > 0
+                        and len(collector) >= Config.ROLLOUT_FLUSH_STEPS
+                    )
+                    if should_flush:
+                        pending_act_data = self.agent.predict(list_obs_data=[next_obs_data])[0]
+                        bootstrap_value = np.array(pending_act_data.value, dtype=np.float32).flatten()[:1]
+                        rollout_chunk = self._flush_rollout(collector, bootstrap_value=bootstrap_value)
+                        collector = []
+                        yield rollout_chunk
+
                 if done:
                     now = time.time()
                     if now - self.last_report_monitor_time >= 60 and self.monitor:
@@ -406,7 +439,7 @@ class EpisodeRunner:
                     if is_validation:
                         yield None
                     else:
-                        yield sample_process(collector)
+                        yield self._flush_rollout(collector)
                     break
 
                 obs_data = next_obs_data

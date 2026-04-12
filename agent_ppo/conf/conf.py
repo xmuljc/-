@@ -54,7 +54,6 @@ class Config:
 
     # 8 movement directions + 8 flash directions.
     ACTION_NUM = 16
-
     VALUE_NUM = 1
 
     GAMMA = 0.995
@@ -66,6 +65,9 @@ class Config:
     CLIP_PARAM = 0.2
     VF_COEF = 1.0
     GRAD_CLIP_RANGE = 0.5
+    MODEL_SYNC_INTERVAL_EPISODES = 10
+    ROLLOUT_FLUSH_STEPS = 256
+    VALUE_NORM_EPS = 1e-6
 
     SURVIVAL_STEP_REWARD = 0.0
     SURVIVAL_REWARD_DECAY_START = 0.70
@@ -115,7 +117,7 @@ class Config:
     TRAIN_MAPS = (1, 2, 3, 4, 5, 6, 7, 8)
     VAL_MAPS = (9, 10)
     VAL_INTERVAL = 10
-    CURRICULUM_USE_GLOBAL_EPISODE = False
+    CURRICULUM_USE_GLOBAL_EPISODE = True
 
     CURRICULUM_TOTAL_EPISODES = 20000
     CURRICULUM_PROGRESS_KNOTS = (0.0, 0.20, 0.45, 0.75, 1.00)
@@ -125,41 +127,40 @@ class Config:
         "late_speedup_survival",
         "hard_generalization",
     )
-    CURRICULUM_STAGE_END_EPISODES = (2600, 5800, 10000)
+    CURRICULUM_STAGE_END_EPISODES = (800, 2500, 5000)
     CURRICULUM_STAGE_PROGRESS = (0.15, 0.45, 0.75, 1.00)
     CURRICULUM_STAGE_TREASURE_RANGE = (
-        (10, 10),  # warmup: 目标最大值，宝物充足
-        (10, 10),  # mid
-        (10, 10),  # late
-        (10, 10),  # hard: 对齐目标 treasure_count=10
+        (9, 10),
+        (8, 10),
+        (7, 10),
+        (6, 10),
     )
     CURRICULUM_STAGE_BUFF_RANGE = (
-        (2, 2),  # warmup: 对齐目标 buff_count=2
-        (2, 2),  # mid
-        (2, 2),  # late
-        (2, 2),  # hard
+        (2, 2),
+        (1, 2),
+        (1, 2),
+        (0, 2),
     )
     CURRICULUM_STAGE_MONSTER_INTERVAL_RANGE = (
-        (600, 1000),  # warmup: 远比目标宽松（目标300）
-        (400, 600),   # mid: 逐步收紧
-        (280, 400),   # late: 接近目标
-        (250, 350),   # hard: 围绕目标300，略有随机性
+        (260, 320),
+        (220, 300),
+        (170, 240),
+        (120, 320),
     )
     CURRICULUM_STAGE_MONSTER_SPEEDUP_RANGE = (
-        (900, 1500),  # warmup: 远比目标宽松（目标500）
-        (650, 950),   # mid: 逐步收紧
-        (480, 700),   # late: 接近目标
-        (430, 600),   # hard: 围绕目标500，略有随机性
+        (420, 520),
+        (320, 460),
+        (240, 360),
+        (160, 420),
     )
-    CURRICULUM_STAGE_MAX_STEP = (1000, 1000, 1000, 1000)  # 对齐目标 max_step=1000
+    CURRICULUM_STAGE_MAX_STEP = (1000, 1000, 1000, 1000)
     CURRICULUM_SCORE_EMA_ALPHA = 0.06
-    # Advance stages strictly by the documented episode schedule.
-    CURRICULUM_STAGE_MIN_EPISODES = (800, 1200, 1500, 0)  # 最少保证局数，达到后才检查表现
-    CURRICULUM_STAGE_SCORE_THRESHOLDS = (600.0, 900.0, 1200.0)          # 总分EMA阈值
-    CURRICULUM_STAGE_STEP_SCORE_THRESHOLDS = (500.0, 700.0, 950.0)      # 步数分EMA阈值
-    CURRICULUM_STAGE_TREASURE_PICKUP_THRESHOLDS = (0.30, 0.20, 0.15)    # 捕获到宝物的episode比例
-    CURRICULUM_STAGE_SPEEDUP_REACHED_THRESHOLDS = (0.0, 0.20, 0.50)     # 达到加速的episode比例
-    CURRICULUM_STAGE_POST_SPEEDUP_STEPS_THRESHOLDS = (0.0, 5.0, 30.0)   # 加速后平均存活步数
+    CURRICULUM_STAGE_MIN_EPISODES = (600, 1200, 1800, 0)
+    CURRICULUM_STAGE_SCORE_THRESHOLDS = (500.0, 700.0, 950.0)
+    CURRICULUM_STAGE_STEP_SCORE_THRESHOLDS = (450.0, 550.0, 800.0)
+    CURRICULUM_STAGE_TREASURE_PICKUP_THRESHOLDS = (0.35, 0.25, 0.20)
+    CURRICULUM_STAGE_SPEEDUP_REACHED_THRESHOLDS = (0.0, 0.20, 0.50)
+    CURRICULUM_STAGE_POST_SPEEDUP_STEPS_THRESHOLDS = (0.0, 0.0, 20.0)
 
     SURVIVAL_STEP_REWARD_SCHEDULE = (0.0035, 0.0035, 0.0028, 0.0022, 0.0016)
     DANGER_SHAPING_SCHEDULE = (0.10, 0.10, 0.14, 0.19, 0.24)

@@ -36,6 +36,9 @@ class Algorithm:
 
         self.last_report_monitor_time = 0
         self.train_step = 0
+        self.value_running_mean = 0.0
+        self.value_running_var = 1.0
+        self.value_running_count = 1e-4
 
     def learn(self, list_sample_data):
         if not list_sample_data:
@@ -49,6 +52,8 @@ class Algorithm:
         advantage = self._stack_to_device([f.advantage for f in list_sample_data], dtype=torch.float32)
         old_value = self._stack_to_device([f.value for f in list_sample_data], dtype=torch.float32)
         reward_sum = self._stack_to_device([f.reward_sum for f in list_sample_data], dtype=torch.float32)
+
+        self._update_value_stats(reward_sum)
 
         self.model.set_train_mode()
         self.optimizer.zero_grad()
@@ -120,9 +125,9 @@ class Algorithm:
         policy_loss2 = -ratio.clamp(1 - self.clip_param, 1 + self.clip_param) * adv
         policy_loss = torch.maximum(policy_loss1, policy_loss2).mean()
 
-        vp = value_pred
-        ov = old_value
-        tdret = reward_sum
+        vp = self._normalize_value(value_pred)
+        ov = self._normalize_value(old_value)
+        tdret = self._normalize_value(reward_sum)
         value_clip = ov + (vp - ov).clamp(-self.clip_param, self.clip_param)
         value_loss = (
             0.5
@@ -160,6 +165,32 @@ class Algorithm:
     def _current_entropy_beta(self):
         decay_progress = min(1.0, self.train_step / float(self.entropy_decay_steps))
         return self.entropy_beta_start + (self.entropy_beta_end - self.entropy_beta_start) * decay_progress
+
+    def _update_value_stats(self, values):
+        flat_values = values.detach().view(-1).float()
+        if flat_values.numel() <= 0:
+            return
+
+        batch_mean = flat_values.mean().item()
+        batch_var = flat_values.var(unbiased=False).item()
+        batch_count = float(flat_values.numel())
+
+        delta = batch_mean - self.value_running_mean
+        total_count = self.value_running_count + batch_count
+        new_mean = self.value_running_mean + delta * batch_count / total_count
+
+        m_a = self.value_running_var * self.value_running_count
+        m_b = batch_var * batch_count
+        m2 = m_a + m_b + delta * delta * self.value_running_count * batch_count / total_count
+
+        self.value_running_mean = new_mean
+        self.value_running_var = max(m2 / total_count, Config.VALUE_NORM_EPS)
+        self.value_running_count = total_count
+
+    def _normalize_value(self, value_tensor):
+        mean = value_tensor.new_tensor(self.value_running_mean)
+        std = value_tensor.new_tensor(max(self.value_running_var, Config.VALUE_NORM_EPS)).sqrt()
+        return (value_tensor - mean) / std
 
     def _log(self, level, message):
         if self.logger is None:
