@@ -454,12 +454,20 @@ class EpisodeRunner:
 
         is_validation = episode_index % int(max(1, Config.VAL_INTERVAL)) == 0
         curriculum_episode_cnt, episode_source = self._get_curriculum_episode_cnt(episode_index, is_validation)
-        max_stage_index = self._resolve_curriculum_stage_index(curriculum_episode_cnt)
-        self._maybe_advance_curriculum_stage(max_stage_index)
-        stage_index = min(max_stage_index, max(0, self.curriculum_stage_id - 1))
-        stage_id = stage_index + 1
-        phase = Config.CURRICULUM_STAGE_PHASES[stage_index]
-        progress = self._compute_curriculum_progress(stage_index)
+        fixed_stage_index = int(getattr(Config, "CURRICULUM_FIXED_STAGE_INDEX", -1))
+        if 0 <= fixed_stage_index < len(Config.CURRICULUM_STAGE_PHASES):
+            stage_index = fixed_stage_index
+            stage_id = stage_index + 1
+            phase = Config.CURRICULUM_STAGE_PHASES[stage_index]
+            progress = float(np.clip(getattr(Config, "CURRICULUM_FIXED_PROGRESS", 0.0), 0.0, 1.0))
+            self.curriculum_stage_id = stage_id
+        else:
+            max_stage_index = self._resolve_curriculum_stage_index(curriculum_episode_cnt)
+            self._maybe_advance_curriculum_stage(max_stage_index)
+            stage_index = min(max_stage_index, max(0, self.curriculum_stage_id - 1))
+            stage_id = stage_index + 1
+            phase = Config.CURRICULUM_STAGE_PHASES[stage_index]
+            progress = self._compute_curriculum_progress(stage_index)
         split = "val" if is_validation else "train"
         maps = list(Config.VAL_MAPS if is_validation else Config.TRAIN_MAPS)
         treasure_count = self._sample_range(Config.CURRICULUM_STAGE_TREASURE_RANGE[stage_index])
