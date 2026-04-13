@@ -5,7 +5,19 @@ map = [1, 2, 3, 4, 5, 6, 7, 8]
 
 # Whether to randomly select maps. true = randomly pick one from configured maps per episode, false = used sequentially.
 # 是否随机抽取地图。布尔值。true表示每局从配置的地图中随机抽取一张，false表示按顺序抽取地图训练。
-map_random = true
+map_random = false
+
+# Validation maps. Leave empty to disable the train/val split.
+# 验证地图。留空表示关闭 train / val split。
+val_map = [9, 10]
+
+# Run one validation cycle after this many train episodes. 0 disables validation.
+# 每训练多少个 episode 跑一次验证。设为0表示关闭验证。
+val_interval = 10
+
+# Number of validation episodes per validation cycle.
+# 每次验证周期跑多少局验证。
+val_episodes = 1
 
 # Number of treasures. Range: 0~10. When less than 10, spawn points are randomly chosen from available positions.
 # 宝箱数量。可配置范围为0～10。当配置小于10时，将从每张地图可生成宝箱的点位随机选择对应数量的点位生成宝箱。

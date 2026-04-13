@@ -1,16 +1,18 @@
-.vscode/
 __pycache__/
-*.pyc
+*.py[cod]
 *.pyo
 *.pyd
 
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
+env/
+
+.vscode/
 ckpt/
 
-第一次训练结果/
-第二轮训练结果/
-第三次训练结果/
-第四次训练结果/
-第五次训练结果/
-第六次训练结果/
-
-*.docx
+*.log
+Thumbs.db
+.DS_Store
